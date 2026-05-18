@@ -1,0 +1,45 @@
+# Dependency folders
+node_modules/
+frontend/node_modules/
+backend/venv/
+backend/.aethergraph/
+.aethergraph/
+
+# Next.js builds and logs
+.next/
+frontend/.next/
+frontend/out/
+build/
+dist/
+*.log
+*.tsbuildinfo
+
+# Python bytecode and caches
+__pycache__/
+backend/__pycache__/
+backend/app/__pycache__/
+backend/app/api/__pycache__/
+backend/app/api/routes/__pycache__/
+backend/app/core/__pycache__/
+backend/app/models/__pycache__/
+backend/app/services/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.radon_cache/
+
+# Environment configurations
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+
+# Miscellaneous
+.DS_Store
+Thumbs.db
+*.pem
+.vercel/
+.vscode/
+.idea/
