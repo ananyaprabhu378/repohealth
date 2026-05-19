@@ -8,8 +8,27 @@ import CodeGalaxy from "../components/CodeGalaxy";
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
+      {/* Premium Header Navigation */}
+      <header className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-6">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-aether-primary to-aether-secondary shadow-[0_0_15px_rgba(0,255,200,0.5)] flex items-center justify-center">
+            <span className="text-black font-black text-xl tracking-tighter">A</span>
+          </div>
+          <span className="text-xl font-bold tracking-tight text-white">AetherGraph</span>
+        </div>
+        
+        <div className="flex items-center gap-6">
+          <Link href="/login" className="text-sm font-semibold text-gray-300 hover:text-white transition-colors">
+            Log In
+          </Link>
+          <Link href="/register" className="text-sm font-bold text-black bg-white px-5 py-2.5 rounded-full hover:bg-gray-200 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+            Sign Up
+          </Link>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden px-6">
+      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden px-6 pt-20">
         
         {/* 3D Code Galaxy Background */}
         <div className="absolute inset-0 z-0 opacity-60">

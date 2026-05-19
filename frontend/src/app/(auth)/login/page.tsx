@@ -9,15 +9,40 @@ export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     
-    // Namesake instant client-side login bypass
-    localStorage.setItem("token", "mock_jwt_token_for_namesake_flow");
-    router.push("/dashboard");
+    try {
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
+      });
+
+      if (!response.ok) {
+        const errDetail = await response.json();
+        throw new Error(errDetail.detail || "Authentication credentials mismatch.");
+      }
+
+      const data = await response.json();
+      localStorage.setItem("token", data.access_token);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "Connection refused. Ensure backend service is active.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,9 +93,10 @@ export default function Login() {
 
           <button 
             type="submit"
-            className="w-full bg-aether-primary text-black font-bold py-3 rounded-lg hover:bg-white transition-colors glow-primary"
+            disabled={isLoading}
+            className="w-full bg-aether-primary text-black font-bold py-3 rounded-lg hover:bg-white transition-colors glow-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Authenticate
+            {isLoading ? "Authenticating Session..." : "Authenticate"}
           </button>
         </form>
 

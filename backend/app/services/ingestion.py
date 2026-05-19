@@ -9,8 +9,11 @@ import json
 import redis
 
 # Connect to redis to store ingestion progress for SSE
+from app.core.broker import memory_broker
+
 try:
-    r_client = redis.Redis(host='localhost', port=6379, db=0)
+    r_client = redis.Redis(host='localhost', port=6379, db=0, socket_timeout=1.0)
+    r_client.ping()
 except Exception:
     r_client = None
 
@@ -20,15 +23,22 @@ class IngestionService:
         self.analysis_service = AnalysisService()
 
     def set_progress(self, repo_id: str, current: int, total: int, status: str):
+        progress_data = {
+            "current": current,
+            "total": total,
+            "status": status
+        }
+        progress_json = json.dumps(progress_data)
+        
+        # Publish to local memory broker baseline
+        memory_broker.set_progress(repo_id, progress_json)
+        memory_broker.publish(f"progress_channel:{repo_id}", progress_json)
+
+        # Publish to Redis if available
         if r_client:
             try:
-                progress_data = {
-                    "current": current,
-                    "total": total,
-                    "status": status
-                }
-                r_client.set(f"progress:{repo_id}", json.dumps(progress_data))
-                r_client.publish(f"progress_channel:{repo_id}", json.dumps(progress_data))
+                r_client.set(f"progress:{repo_id}", progress_json)
+                r_client.publish(f"progress_channel:{repo_id}", progress_json)
             except Exception:
                 pass
 

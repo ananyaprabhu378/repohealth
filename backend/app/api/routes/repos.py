@@ -78,45 +78,87 @@ import redis.asyncio as aioredis
 from sse_starlette.sse import EventSourceResponse
 import json
 import asyncio
+from app.core.broker import memory_broker
 
 @router.get("/{owner}/{repo}/progress")
 async def stream_ingestion_progress(owner: str, repo: str):
     repo_id = f"{owner}/{repo}"
-    r = aioredis.Redis(host='localhost', port=6379, db=0)
+    
+    # Check if redis is available; fail fast to fallback if down
+    use_redis = False
+    r = None
+    try:
+        r = aioredis.Redis(host='localhost', port=6379, db=0, socket_timeout=1.0)
+        await r.ping()
+        use_redis = True
+    except Exception:
+        use_redis = False
+        if r:
+            await r.close()
 
     async def event_generator():
-        pubsub = r.pubsub()
-        try:
-            await pubsub.subscribe(f"progress_channel:{repo_id}")
-            
-            # Check initial state
-            initial = await r.get(f"progress:{repo_id}")
-            if initial:
-                yield {
-                    "event": "message",
-                    "data": initial.decode('utf-8')
-                }
-
-            while True:
-                # Check for message in non-blocking async way
-                message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
-                if message:
+        if use_redis and r:
+            pubsub = r.pubsub()
+            try:
+                await pubsub.subscribe(f"progress_channel:{repo_id}")
+                
+                # Check initial state
+                initial = await r.get(f"progress:{repo_id}")
+                if initial:
                     yield {
                         "event": "message",
-                        "data": message['data'].decode('utf-8')
+                        "data": initial.decode('utf-8')
                     }
-                await asyncio.sleep(0.5)
-        except Exception as e:
-            yield {
-                "event": "message",
-                "data": json.dumps({"current": 0, "total": 100, "status": f"failed: {str(e)}"})
-            }
-        finally:
+
+                while True:
+                    # Check for message in non-blocking async way
+                    message = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1.0)
+                    if message:
+                        yield {
+                            "event": "message",
+                            "data": message['data'].decode('utf-8')
+                        }
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                yield {
+                    "event": "message",
+                    "data": json.dumps({"current": 0, "total": 100, "status": f"failed: {str(e)}"})
+                }
+            finally:
+                try:
+                    await pubsub.unsubscribe()
+                    await r.close()
+                except Exception:
+                    pass
+        else:
+            # Memory broker fallback
+            queue = memory_broker.subscribe(f"progress_channel:{repo_id}")
             try:
-                await pubsub.unsubscribe()
-                await r.close()
-            except Exception:
-                pass
+                # Check initial state
+                initial = memory_broker.get_progress(repo_id)
+                if initial:
+                    yield {
+                        "event": "message",
+                        "data": initial
+                    }
+
+                while True:
+                    try:
+                        data = await asyncio.wait_for(queue.get(), timeout=1.0)
+                        yield {
+                            "event": "message",
+                            "data": data
+                        }
+                    except asyncio.TimeoutError:
+                        pass
+                    await asyncio.sleep(0.5)
+            except Exception as e:
+                yield {
+                    "event": "message",
+                    "data": json.dumps({"current": 0, "total": 100, "status": f"failed: {str(e)}"})
+                }
+            finally:
+                memory_broker.unsubscribe(f"progress_channel:{repo_id}", queue)
 
     return EventSourceResponse(event_generator())
 

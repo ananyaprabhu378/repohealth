@@ -10,14 +10,38 @@ export default function Register() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     
-    // Namesake instant client-side register bypass
-    router.push("/login");
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          username,
+          password
+        }),
+      });
+
+      if (!response.ok) {
+        const errDetail = await response.json();
+        throw new Error(errDetail.detail || "Registration failed.");
+      }
+
+      router.push("/login");
+    } catch (err: any) {
+      setError(err.message || "Connection refused. Ensure backend service is active.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,9 +105,10 @@ export default function Register() {
 
           <button 
             type="submit"
-            className="w-full bg-aether-secondary text-white font-bold py-3 rounded-lg hover:bg-white hover:text-black transition-colors glow-secondary shadow-[0_0_20px_rgba(157,0,255,0.4)]"
+            disabled={isLoading}
+            className="w-full bg-aether-secondary text-white font-bold py-3 rounded-lg hover:bg-white hover:text-black transition-colors glow-secondary shadow-[0_0_20px_rgba(157,0,255,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Create Account
+            {isLoading ? "Initializing Profile..." : "Create Account"}
           </button>
         </form>
 

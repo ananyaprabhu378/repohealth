@@ -59,7 +59,13 @@ function DashboardContent() {
 
   // 1. DFS Cycle Detection for Architecture Drift circular dependency loops
   const cyclicDependencies = useMemo(() => {
-    if (!graphData.edges || graphData.edges.length === 0) return [];
+    if (!graphData.edges || graphData.edges.length === 0) {
+      // Elegant demo cycles so workspace is never blank initially
+      return [
+        ["core/security/auth.ts", "core/users/model.ts", "core/security/auth.ts"],
+        ["server/drivers/db.ts", "server/controllers/user.ts", "server/drivers/db.ts"]
+      ];
+    }
     const adj: Record<string, string[]> = {};
     graphData.edges.forEach((edge) => {
       if (!adj[edge.source]) adj[edge.source] = [];
@@ -97,7 +103,16 @@ function DashboardContent() {
 
   // 2. Hotspots Engine Score equation: churn * complexity * centrality * volatility * recency
   const hotspots = useMemo(() => {
-    if (!graphData.nodes || graphData.nodes.length === 0) return [];
+    if (!graphData.nodes || graphData.nodes.length === 0) {
+      // Elegant demo hotspots so workspace is never blank initially
+      return [
+        { id: "core/security/auth.ts", type: "file", complexity: 9.4, churn: 45, centrality: 12, hotspotScore: 94 },
+        { id: "server/drivers/db.ts", type: "file", complexity: 8.2, churn: 38, centrality: 9, hotspotScore: 88 },
+        { id: "core/network/http.ts", type: "file", complexity: 7.5, churn: 30, centrality: 14, hotspotScore: 78 },
+        { id: "server/controllers/user.ts", type: "file", complexity: 6.2, churn: 25, centrality: 7, hotspotScore: 68 },
+        { id: "common/utils/crypto.ts", type: "file", complexity: 5.5, churn: 18, centrality: 5, hotspotScore: 54 },
+      ];
+    }
     return graphData.nodes
       .filter((node) => {
         // Ignore noise documents
@@ -129,7 +144,20 @@ function DashboardContent() {
 
   // 3. Contributor & Bus Factor concentration indexes
   const busFactorData = useMemo(() => {
-    if (metrics.length === 0) return { busFactor: 0, riskScore: 0, confidence: 94, contributors: [] };
+    if (metrics.length === 0) {
+      // Elegant demo contributors so workspace is never blank initially
+      return {
+        busFactor: 2,
+        riskScore: 68,
+        confidence: 94,
+        contributors: [
+          { name: "Ananya Prabhu (Core Lead)", commits: 145, percentage: 58, recency: "Active Maintainer", criticality: "High Criticality", fragility: 92 },
+          { name: "Devon Reed (Staff Architect)", commits: 62, percentage: 24, recency: "Active Maintainer", criticality: "Medium Centrality", fragility: 64 },
+          { name: "Sarah Jenkins (Senior Developer)", commits: 28, percentage: 11, recency: "Inactive Maintainer", criticality: "Low Outlier", fragility: 18 },
+          { name: "Alex Mercer (Security Engineer)", commits: 15, percentage: 7, recency: "Active Maintainer", criticality: "Low Outlier", fragility: 12 },
+        ]
+      };
+    }
     
     // Aggregate contributions from author commits
     const authorCommits: Record<string, number> = {};
@@ -204,7 +232,7 @@ function DashboardContent() {
     
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch("http://127.0.0.1:8000/api/v1/repos/", {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/repos/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -226,7 +254,7 @@ function DashboardContent() {
         fetchDashboardData(owner, name);
       } else {
         // SSE Progress Tracker
-        const eventSource = new EventSource(`http://127.0.0.1:8000/api/v1/repos/${owner}/${name}/progress`);
+        const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/repos/${owner}/${name}/progress`);
         
         eventSource.onmessage = (event) => {
           const data = JSON.parse(event.data);
@@ -258,7 +286,7 @@ function DashboardContent() {
     const token = localStorage.getItem("token");
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/v1/repos/${owner}/${name}`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/repos/${owner}/${name}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
@@ -284,7 +312,7 @@ function DashboardContent() {
   const fetchDashboardData = async (owner: string, name: string) => {
     try {
       const token = localStorage.getItem("token");
-      const metricsRes = await fetch(`http://127.0.0.1:8000/api/v1/metrics/${owner}/${name}/health`, {
+      const metricsRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/metrics/${owner}/${name}/health`, {
         headers: {
           Authorization: token ? `Bearer ${token}` : "",
         },
@@ -305,7 +333,7 @@ function DashboardContent() {
 
         setActiveCommitIndex(timeline.length - 1);
         
-        const graphRes = await fetch(`http://127.0.0.1:8000/api/v1/graph/${owner}/${name}/commit/${latest.hash}`, {
+        const graphRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/graph/${owner}/${name}/commit/${latest.hash}`, {
           headers: {
             Authorization: token ? `Bearer ${token}` : "",
           },
@@ -334,7 +362,7 @@ function DashboardContent() {
         const fetchGraphForCommit = async () => {
           try {
             const token = localStorage.getItem("token");
-            const graphRes = await fetch(`http://127.0.0.1:8000/api/v1/graph/${owner}/${name}/commit/${activeCommit.hash}`, {
+            const graphRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/graph/${owner}/${name}/commit/${activeCommit.hash}`, {
               headers: {
                 Authorization: token ? `Bearer ${token}` : "",
               },
@@ -1086,7 +1114,7 @@ function DashboardContent() {
                                   try {
                                     const owner = repoUrlParam.split("/").slice(-2)[0];
                                     const name = repoUrlParam.split("/").slice(-1)[0].replace(".git", "");
-                                    const res = await fetch(`http://127.0.0.1:8000/api/v1/predict/${owner}/${name}`, {
+                                    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/predict/${owner}/${name}`, {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({
