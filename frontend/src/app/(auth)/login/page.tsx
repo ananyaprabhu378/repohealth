@@ -17,11 +17,32 @@ export default function Login() {
     setError("");
     setIsLoading(true);
     
-    // Fallback/Mock Authentication for Presentation
-    setTimeout(() => {
-      localStorage.setItem("token", "mock-presentation-token");
+    try {
+      const params = new URLSearchParams();
+      params.append("username", username);
+      params.append("password", password);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: params.toString()
+      });
+
+      if (!response.ok) {
+        const errDetail = await response.json();
+        throw new Error(errDetail.detail || "Authentication credentials mismatch.");
+      }
+
+      const data = await response.json();
+      localStorage.setItem("token", data.access_token);
       router.push("/dashboard");
-    }, 800);
+    } catch (err: any) {
+      setError(err.message || "Connection refused. Ensure backend service is active.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -230,28 +230,56 @@ function DashboardContent() {
     setIsIngesting(true);
     setError("");
     
-    // Presentation Demo Bypass: Simulate real-time SSE progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 20;
-      setIngestProgress({ 
-        status: "processing", 
-        message: `Analyzing temporal history and ASTs... (${progress}%)`, 
-        cloned_commits: progress * 15 
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/repos/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify({ url }),
       });
-      
-      if (progress >= 100) {
-        clearInterval(interval);
-        setIngestProgress({ status: "completed", message: "Analysis complete.", cloned_commits: 1500 });
-        
-        // Wait a tiny bit for the UI to show 100% before dropping into the dashboard
-        setTimeout(() => {
-          setIsIngesting(false);
-          // We intentionally DO NOT call fetchDashboardData here.
-          // By leaving graphData empty, the UI will automatically render the beautiful demo variables!
-        }, 800);
+
+      if (!res.ok) {
+        throw new Error("Failed to trigger repository ingestion.");
       }
-    }, 600);
+
+      const repoData = await res.json();
+      const owner = repoData.owner;
+      const name = repoData.name;
+
+      if (repoData.status === "completed") {
+        setIsIngesting(false);
+        fetchDashboardData(owner, name);
+      } else {
+        // SSE Progress Tracker
+        const eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/api/v1/repos/${owner}/${name}/progress`);
+        
+        eventSource.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          setIngestProgress(data);
+          
+          if (data.status === "completed") {
+            eventSource.close();
+            setIsIngesting(false);
+            fetchDashboardData(owner, name);
+          } else if (data.status.startsWith("failed")) {
+            eventSource.close();
+            setIsIngesting(false);
+            setError(data.status);
+          }
+        };
+
+        eventSource.onerror = () => {
+          eventSource.close();
+          pollIngestionStatus(owner, name);
+        };
+      }
+    } catch (e: any) {
+      setIsIngesting(false);
+      setError(e.message || "Failed to analyze repository.");
+    }
   };
 
   const pollIngestionStatus = async (owner: string, name: string) => {
