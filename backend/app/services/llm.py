@@ -3,9 +3,12 @@ from app.core.config import settings
 
 class LLMService:
     def __init__(self):
-        self.api_key = settings.OPENAI_API_KEY
+        self.api_key = settings.GROQ_API_KEY
         if self.api_key:
-            self.client = OpenAI(api_key=self.api_key)
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url="https://api.groq.com/openai/v1"
+            )
         else:
             self.client = None
 
@@ -45,7 +48,7 @@ class LLMService:
 
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="llama3-8b-8192",
                 messages=[
                     {"role": "system", "content": "You are a concise, highly technical AI CTO."},
                     {"role": "user", "content": prompt}

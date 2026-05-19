@@ -16,7 +16,7 @@ class Settings(BaseSettings):
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}/{self.POSTGRES_DB}"
 
     # LLM Settings
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    GROQ_API_KEY: Optional[str] = os.getenv("GROQ_API_KEY", os.getenv("OPENAI_API_KEY"))
 
     # Ingestion Settings
     REPOS_DIR: str = os.getenv("REPOS_DIR", "./.aethergraph/repos")
